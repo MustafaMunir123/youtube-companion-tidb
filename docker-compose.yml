@@ -1,0 +1,43 @@
+version: "3"
+
+services:
+  # frontend:
+  #    build: ./frontend
+  #    image: node:20.5.1
+  #    volumes:
+  #      - .:/usr/src/apps/mushfinancing
+  #    ports:
+  #      - "3000:3000"
+  #    command: npm start
+  #    depends_on:
+  #      - mush_backend
+  #      - mush_postgres
+
+  backend:
+    image: python:3.10.12
+    container_name: yt_companion_backend
+    build: ./yt_companion_api
+    command: python /usr/src/apps/yt_companion/manage.py runserver 0.0.0.0:8000
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./yt_companion_api:/usr/src/apps/yt_companion
+    env_file:
+      - yt_companion_api/.env
+    # depends_on:
+    #   - mush_postgres
+
+#   mush_postgres:
+#     image: postgres
+#     ports:
+#       - "5432:5432"
+#     container_name: mush_postgres
+#     environment:
+#       - POSTGRES_DB=mushfinancing
+#       - POSTGRES_USER=postgres
+#       - POSTGRES_PASSWORD=postgres
+#     volumes:
+#       - mush_postgres:/var/lib/postgresql/data/
+
+# volumes:
+#   mush_postgres:
