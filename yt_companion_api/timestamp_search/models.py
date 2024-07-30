@@ -44,6 +44,7 @@ class TimeStamp(UUIDMixin):
     video = models.ForeignKey(Video, on_delete=models.CASCADE, related_name="time_stamps")
     embedding = VectorField(dimensions=800, db_comment="hnsw(distance=cosine)")
     text = models.TextField(null=False, blank=False)
+    chunk_index=models.IntegerField(default=0)
 
     def __str__(self) -> str:
         return f"{self.video.video_title} | {self.time_stamp} {self.caption}"

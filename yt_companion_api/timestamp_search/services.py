@@ -1,15 +1,11 @@
-import weaviate
 import os
 import json
 import time
 from dotenv import load_dotenv
-import weaviate.classes as wvc
 from timestamp_search.playlist_utils import youtube_transcript_loader
-from timestamp_search.playlist_utils import get_video_urls_from_playlist, get_video_title, get_video_id, create_collection_name
+from timestamp_search.playlist_utils import get_video_urls_from_playlist, get_video_title, get_video_id
 from timestamp_search.stopwards_removal import remove_stopwords
 from timestamp_search.models import Video, TimeStamp, Conversation
-from weaviate.classes.query import MetadataQuery, Filter
-from weaviate.classes.query import HybridFusion
 from django.conf import settings
 from timestamp_search.models import Chat
 
@@ -36,53 +32,51 @@ VIDEO_ID = "HLi2xYxZX10"
 #     else:
 #         return f"{seconds}s"
 
-class WeaviateAI:
-    def __init__(self, client, collection_name, url, is_playlist=False, conversation_id=None) -> None:
+class TiDBAI:
+    def __init__(self, client, url, is_playlist=False) -> None:
         
-        self.client = client
-        self.collection_name = collection_name
         self.chunks_collection = None
         self.is_playlist = is_playlist
         self.url = url
         self.status = "training"
-        self.conversation_id=conversation_id
 
-    def initiate_collection(self):
-        if self.client.collections.exists(self.collection_name):  
-            self.client.collections.delete(self.collection_name)
+    # def initiate_collection(self):
+    #     if self.client.collections.exists(self.collection_name):  
+    #         self.client.collections.delete(self.collection_name)
 
-        chunks_collection = self.client.collections.create(
-            name=self.collection_name,
-            properties=[
-                wvc.config.Property(
-                    name="chunk",
-                    data_type=wvc.config.DataType.TEXT
-                ),
-                wvc.config.Property(
-                    name="video_id",
-                    data_type=wvc.config.DataType.TEXT
-                ),
-                wvc.config.Property(
-                    name="user_id",
-                    data_type=wvc.config.DataType.TEXT
-                ),
-                wvc.config.Property(
-                    name="chunk_index",
-                    data_type=wvc.config.DataType.INT
-                ),
-                wvc.config.Property(
-                    name="video_title",
-                    data_type=wvc.config.DataType.TEXT
-                )
-            ],
-            vectorizer_config=wvc.config.Configure.Vectorizer.text2vec_openai(),  # Use `text2vec-openai` as the vectorizer
-            generative_config=wvc.config.Configure.Generative.openai(),  # Use `generative-openai` with default parameters
-        )
-        self.chunks_collection = chunks_collection
+    #     chunks_collection = self.client.collections.create(
+    #         name=self.collection_name,
+    #         properties=[
+    #             wvc.config.Property(
+    #                 name="chunk",
+    #                 data_type=wvc.config.DataType.TEXT
+    #             ),
+    #             wvc.config.Property(
+    #                 name="video_id",
+    #                 data_type=wvc.config.DataType.TEXT
+    #             ),
+    #             wvc.config.Property(
+    #                 name="user_id",
+    #                 data_type=wvc.config.DataType.TEXT
+    #             ),
+    #             wvc.config.Property(
+    #                 name="chunk_index",
+    #                 data_type=wvc.config.DataType.INT
+    #             ),
+    #             wvc.config.Property(
+    #                 name="video_title",
+    #                 data_type=wvc.config.DataType.TEXT
+    #             )
+    #         ],
+    #         vectorizer_config=wvc.config.Configure.Vectorizer.text2vec_openai(),  # Use `text2vec-openai` as the vectorizer
+    #         generative_config=wvc.config.Configure.Generative.openai(),  # Use `generative-openai` with default parameters
+    #     )
+    #     self.chunks_collection = chunks_collection
 
     def vectorize_video_data(self):
         try:
             url_dict = {}
+            time_stamp_instances = []
 
             if self.is_playlist:
                 url_dict = get_video_urls_from_playlist(self.url)
@@ -98,19 +92,18 @@ class WeaviateAI:
                 print("================", video_title)
                 chunked_text = youtube_transcript_loader(video_id)
 
-                chunks_list = list()
+                # TODO: may need to provide uuid in `id` field explicitly
                 for i, chunk in enumerate(chunked_text):
-                #     data_properties = {
-                #         "video_id": video_id,
-                #         "chunk": chunk,
-                #         "chunk_index": i,
-                #         "user_id": "user_id",  # TODO: replace with actual user_id for multi user support
-                #         "video_title": video_title
-                #     }
-                #     data_object = wvc.data.DataObject(properties=data_properties)
-                #     chunks_list.append(data_object)
-                # if chunked_text:
-                #     self.chunks_collection.data.insert_many(chunks_list)
+                    time_stamp_data = TimeStamp(
+                        video_id=video_id,
+                        embedding=chunk["embedding"],
+                        chunk_index=i,
+                        text=chunk["text"],
+                        time_stamp=chunk["start_time"]
+                    )
+                    time_stamp_instances.append(time_stamp_data)
+
+                time_stamps = TimeStamp.objects.bulk_create(time_stamp_instances)
 
                 self.status = "trained"
         except Exception as e:
@@ -217,25 +210,23 @@ class WeaviateAI:
 
 def train_model(url, playlist, user_id, chat_id):
     start_time = time.time()
-    collection_name = create_collection_name(user_id=user_id, chat_id=chat_id)
+    # collection_name = create_collection_name(user_id=user_id, chat_id=chat_id)
 
-    weaviate_ai = WeaviateAI(
+    tidb_instance = TiDBAI(
         client=settings.WEAVIATE_CLIENT,
-        collection_name=collection_name,
         # url="https://youtube.com/playlist?list=PLS1QulWo1RIaJECMeUT4LFwJ-ghgoSH6n",
         url=url,
         is_playlist=playlist
     )
-    weaviate_ai.initiate_collection()
-    weaviate_ai.vectorize_video_data()
+    tidb_instance.vectorize_video_data()
 
     chat = Chat.objects.filter(user_id=user_id, id=chat_id).first()
-    chat.status = weaviate_ai.status
+    chat.status = tidb_instance.status
     chat.save()
     
 
     end_time = time.time()
-    print(f"total training time: {end_time-start_time} of collection `{weaviate_ai.collection_name}`")
+    print(f"total training time: {end_time-start_time} of collection `{tidb_instance.collection_name}`")
 
 def query_db(chat, user_id, prompt):
     collection_name = create_collection_name(chat_id=chat.id, user_id=user_id)
@@ -245,7 +236,7 @@ def query_db(chat, user_id, prompt):
     )
     conversation.save()
 
-    weaviate_ai = WeaviateAI(
+    tidb_instance = TiDBAI(
         client=settings.WEAVIATE_CLIENT,
         collection_name=collection_name,
         # url="https://youtube.com/playlist?list=PLS1QulWo1RIaJECMeUT4LFwJ-ghgoSH6n",
@@ -256,6 +247,6 @@ def query_db(chat, user_id, prompt):
 
     results_limit = 5 if chat.playlist else 3
 
-    results = weaviate_ai.query_vector_db(prompt, results_limit)
+    results = tidb_instance.query_vector_db(prompt, results_limit)
     return results
 

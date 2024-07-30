@@ -5,7 +5,7 @@ from users.utils import custom_response
 from rest_framework.views import status
 from timestamp_search.models import Chat
 from users.models import CustomUser
-from generate_embedding import get_embeddings
+from timestamp_search.generate_embedding import get_embeddings
 
 
 logger = logging.getLogger(__name__)
@@ -108,7 +108,7 @@ def youtube_transcript_loader(video_id):
             combined_transcripts["text"].strip(" ")
 
             combined_transcripts["embedding"] = get_embeddings(combined_transcripts["text"])
-            
+
             entire_script.append(f'{combined_transcripts}')
 
 
@@ -122,11 +122,11 @@ def youtube_transcript_loader(video_id):
         raise Exception("Error in YouTubeTranscriptApi: ", e)
 
 
-def create_collection_name(user_id, chat_id):
-    chat = Chat.objects.get(id=chat_id)
-    user = CustomUser.objects.get(id=user_id)
-    # collection_name = str(user_id)[-6:] + str(chat_id)[-6:]
-    collection_name = str(user.full_name) + str(chat.chat_title)
-    collection_name = collection_name.replace(" ", "_")
-    print(collection_name)
-    return collection_name
+# def create_collection_name(user_id, chat_id):
+#     chat = Chat.objects.get(id=chat_id)
+#     user = CustomUser.objects.get(id=user_id)
+#     # collection_name = str(user_id)[-6:] + str(chat_id)[-6:]
+#     collection_name = str(user.full_name) + str(chat.chat_title)
+#     collection_name = collection_name.replace(" ", "_")
+#     print(collection_name)
+#     return collection_name
