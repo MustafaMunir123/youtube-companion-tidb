@@ -1,0 +1,113 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@font-face {
+  font-family: 'Segoe UI Regular';
+  font-style: normal;
+  font-weight: normal;
+  src:
+    local('Segoe UI Regular'),
+    url('/assets/fonts/segoe-ui/segoeui.woff') format('woff');
+}
+
+@font-face {
+  font-family: 'Segoe UI Light';
+  font-style: normal;
+  font-weight: normal;
+  src:
+    local('Segoe UI Light'),
+    url('/assets/fonts/segoe-ui/segoeui-light.woff') format('woff');
+}
+
+@font-face {
+  font-family: 'Segoe UI SemiBold';
+  font-style: normal;
+  font-weight: normal;
+  src:
+    local('Segoe UI SemiBold'),
+    url('/assets/fonts/segoe-ui/segoeui-semibold.woff') format('woff');
+}
+
+@font-face {
+  font-family: 'Segoe UI Bold';
+  font-style: normal;
+  font-weight: normal;
+  src:
+    local('Segoe UI Bold'),
+    url('/assets/fonts/segoe-ui/segoeui-bold.woff') format('woff');
+}
+
+:root {
+  --foreground-rgb: 0, 0, 0;
+  --background-start-rgb: 214, 219, 220;
+  --background-end-rgb: 255, 255, 255;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --foreground-rgb: 255, 255, 255;
+    --background-start-rgb: 0, 0, 0;
+    --background-end-rgb: 0, 0, 0;
+  }
+}
+
+body {
+  font-family: 'Segoe UI Regular', system-ui, sans-serif;
+}
+
+@layer components {
+  body {
+    @apply bg-white text-neutral-800 antialiased;
+  }
+
+  .src-file-icon {
+    @apply h-10 w-10 rounded-md border border-gray-200 bg-white !bg-auto !bg-center !bg-no-repeat p-1;
+  }
+
+  .sidebar-lisl-item {
+    @apply relative flex h-10 flex-row items-center items-center gap-x-2 rounded-md px-3 py-1.5 font-regular text-white transition-colors duration-200;
+  }
+
+  .loading-dot-animation {
+    @apply h-[10px] w-[10px] animate-bounce rounded-full bg-slate-200;
+  }
+}
+
+.src-file-icon.pdf {
+  background-image: url(../../public/assets/svg/pdf.svg);
+}
+
+.src-file-icon.docx {
+  background-image: url(../../public/assets/svg/docx.svg);
+}
+
+.src-file-icon.csv {
+  background-image: url(../../public/assets/svg/csv.svg);
+}
+
+.src-file-icon.txt {
+  background-image: url(../../public/assets/svg/txt.svg);
+}
+.first-circle {
+  animation-delay: 0.1s;
+}
+.second-circle {
+  animation-delay: 0.2s;
+}
+.third-circle {
+  animation-delay: 0.3s;
+}
+
+#nav::-webkit-scrollbar {
+  width: 8px;
+}
+
+#nav::-webkit-scrollbar-thumb {
+  background: #422bd9;
+  border-radius: 50px;
+}
+
+#nav::-webkit-scrollbar-track {
+  background: transparent;
+}

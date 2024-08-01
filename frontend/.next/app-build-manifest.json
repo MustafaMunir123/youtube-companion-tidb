@@ -1,0 +1,40 @@
+{
+  "pages": {
+    "/[locale]/(protected)/youtube-companion/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/[locale]/(protected)/youtube-companion/page.js"
+    ],
+    "/[locale]/(protected)/layout": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/[locale]/(protected)/layout.js"
+    ],
+    "/[locale]/layout": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/css/app/[locale]/layout.css",
+      "static/chunks/app/[locale]/layout.js"
+    ],
+    "/[locale]/not-found": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/[locale]/not-found.js"
+    ],
+    "/[locale]/(public)/auth/signin/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/[locale]/(public)/auth/signin/page.js"
+    ],
+    "/[locale]/(protected)/create-chat/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/[locale]/(protected)/create-chat/page.js"
+    ],
+    "/[locale]/(protected)/youtube-companion/[chat_id]/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/[locale]/(protected)/youtube-companion/[chat_id]/page.js"
+    ]
+  }
+}

@@ -1,0 +1,7 @@
+{
+  "/favicon.ico/route": "app/favicon.ico/route.js",
+  "/[locale]/(public)/auth/signin/page": "app/[locale]/(public)/auth/signin/page.js",
+  "/[locale]/(protected)/youtube-companion/page": "app/[locale]/(protected)/youtube-companion/page.js",
+  "/[locale]/(protected)/create-chat/page": "app/[locale]/(protected)/create-chat/page.js",
+  "/[locale]/(protected)/youtube-companion/[chat_id]/page": "app/[locale]/(protected)/youtube-companion/[chat_id]/page.js"
+}
