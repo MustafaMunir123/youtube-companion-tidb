@@ -25,6 +25,7 @@ class Conversation(UUIDMixin):
     chat = models.ForeignKey(Chat, related_name="user_prompts", on_delete=models.CASCADE)
     prompt = models.CharField(null=False, blank=False, max_length=1000)
     created_at = models.DateTimeField(auto_created=True, auto_now=True)
+    response = models.JSONField(null=True, blank=True)
     # video_title = models.CharField(max_length=1000, null=True, blank=True)
     # video_id = models.CharField(max_length=100, null=True, blank=True)
 
@@ -42,10 +43,10 @@ class Video(UUIDMixin):
 class TimeStamp(UUIDMixin):
     time_stamp = models.CharField(max_length=1000, null=False, blank=False)
     video = models.ForeignKey(Video, on_delete=models.CASCADE, related_name="time_stamps")
-    embedding = VectorField(dimensions=800, db_comment="hnsw(distance=cosine)")
+    embedding = VectorField(dimensions=768, db_comment="hnsw(distance=cosine)")
     text = models.TextField(null=False, blank=False)
     chunk_index=models.IntegerField(default=0)
 
     def __str__(self) -> str:
-        return f"{self.video.video_title} | {self.time_stamp} {self.caption}"
+        return f"{self.video.video_title} | {self.time_stamp} {self.text}"
 

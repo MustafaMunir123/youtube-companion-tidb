@@ -10,8 +10,9 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/4.0/ref/settings/
 """
 
-from pathlib import Path
 import os
+import pymysql
+from pathlib import Path
 from dotenv import load_dotenv
 
 
@@ -131,12 +132,17 @@ DATABASES = {
     },
 }
 
+pymysql.version_info = (1, 4, 6, "final", 0)
+pymysql.install_as_MySQLdb()
+
 TIDB_CA_PATH = os.environ.get("TIDB_CA_PATH", "")
 if TIDB_CA_PATH:
-    DATABASES["default"]["OPTIONS"]["ssl_mode"] = "VERIFY_IDENTITY"
+    # DATABASES["default"]["OPTIONS"]["ssl_mode"] = "VERIFY_CA"
     DATABASES["default"]["OPTIONS"]["ssl"] = {
-        "ca": TIDB_CA_PATH,
+        "ssl_mode": "VERIFY_CA",
+        "ca": TIDB_CA_PATH
     }
+print(TIDB_CA_PATH)
 
 
 

@@ -69,7 +69,7 @@ def youtube_transcript_loader(video_id):
             transcripts = YouTubeTranscriptApi.get_transcript(video_id, languages=('en',))
         except Exception as e:
             print(str(e))
-            return []
+            raise e
 
         entire_script = []
         length_of_transcripts = len(transcripts)
@@ -109,7 +109,8 @@ def youtube_transcript_loader(video_id):
 
             combined_transcripts["embedding"] = get_embeddings(combined_transcripts["text"])
 
-            entire_script.append(f'{combined_transcripts}')
+            entire_script.append(combined_transcripts)
+            print(f'{i+1} Text: {combined_transcripts["text"]}')
 
 
         logger.info(

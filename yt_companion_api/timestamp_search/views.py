@@ -1,3 +1,4 @@
+import json
 from rest_framework.views import APIView, status
 from rest_framework.generics import ListAPIView
 from timestamp_search.models import Chat, Conversation, Video, TimeStamp
@@ -23,7 +24,7 @@ class ChatAPIView(APIView):
             # conversation_id = serialized_data.pop("last_conversation_id")
             # conversation_id = conversation_id if conversation_id else ""
 
-            if is_history == "true":
+            if "true":
                 conversations = Conversation.objects.filter(chat_id=chat.id).order_by("created_at")
                 history = []
                 print(len(conversations))
@@ -32,26 +33,18 @@ class ChatAPIView(APIView):
                 # conversation = Conversation.objects.filter(id=conversation_id.strip()).first()
                 # if conversation:
                 for conversation in conversations:
-                    videos_list = []
-
-                    videos = Video.objects.filter(conversation_id=conversation.id)
-                    for video in videos:
-                        time_stamps = TimeStamp.objects.filter(video_id=video.id).values("time_stamp", "caption", "id")
-                        if time_stamps:
-                            serialized_time_stamps = TimeStampSerializer(time_stamps, many=True).data
-                            videos_list.append(
-                                {
-                                    "prompt": conversation.prompt,
-                                    "video_title": video.video_title,
-                                    "video_id": video.video_id,
-                                    "time_stamps": serialized_time_stamps
-                                }
-                            )
-                    history.extend(videos_list)
+                    json_message = conversation.response
+                    history_message = json.loads(json_message)
+                    history_message.update(
+                        {
+                            "prompt": conversation.prompt
+                        }
+                    )
+                    
+                    history.append(history_message)
                 serialized_data.update(
                     {"history": history}
                 )
-
 
             return custom_response(
                 response_status=status.HTTP_200_OK,
@@ -99,6 +92,9 @@ class ChatAPIView(APIView):
             )
 
         except Exception as e:
+            chat_object = Chat.objects.filter(chat_title=chat_title)
+            if chat_object.exists():
+                chat_object.first().delete()
             raise e
 
 

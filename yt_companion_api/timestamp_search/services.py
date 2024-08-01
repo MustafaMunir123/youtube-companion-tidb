@@ -1,13 +1,16 @@
-import os
 import json
+import os
 import time
+import uuid
 from dotenv import load_dotenv
 from timestamp_search.playlist_utils import youtube_transcript_loader
 from timestamp_search.playlist_utils import get_video_urls_from_playlist, get_video_title, get_video_id
 from timestamp_search.stopwards_removal import remove_stopwords
+from django_tidb.fields.vector import CosineDistance
 from timestamp_search.models import Video, TimeStamp, Conversation
 from django.conf import settings
 from timestamp_search.models import Chat
+from timestamp_search.generate_embedding import get_embeddings
 
 load_dotenv()
 
@@ -33,7 +36,7 @@ VIDEO_ID = "HLi2xYxZX10"
 #         return f"{seconds}s"
 
 class TiDBAI:
-    def __init__(self, client, url, is_playlist=False) -> None:
+    def __init__(self, url, is_playlist=False) -> None:
         
         self.chunks_collection = None
         self.is_playlist = is_playlist
@@ -73,7 +76,7 @@ class TiDBAI:
     #     )
     #     self.chunks_collection = chunks_collection
 
-    def vectorize_video_data(self):
+    def vectorize_video_data(self, chat_id):
         try:
             url_dict = {}
             time_stamp_instances = []
@@ -84,122 +87,101 @@ class TiDBAI:
                 video_title = get_video_title(self.url)
                 video_id = get_video_id(self.url)
                 url_dict[video_id] = {"video_title": video_title, "video_url": self.url}
+                
 
             for video_id, video_data in url_dict.items():
-                # print(video_data)
+                print(video_data)
                 video_url = video_data["video_url"]
                 video_title = video_data["video_title"]
                 print("================", video_title)
                 chunked_text = youtube_transcript_loader(video_id)
+                print("chunked_text")
+
+                video_instance = Video(video_id=video_id,
+                      video_title=video_title,
+                      chat_id=chat_id)
+                video_instance.save()
 
                 # TODO: may need to provide uuid in `id` field explicitly
                 for i, chunk in enumerate(chunked_text):
+                    print(i, chunk.keys())
+                    print(chunk["text"])
+                    print(chunk["start_time"])
                     time_stamp_data = TimeStamp(
-                        video_id=video_id,
+                        id=uuid.uuid4(),
+                        video_id=video_instance.id,
                         embedding=chunk["embedding"],
                         chunk_index=i,
                         text=chunk["text"],
                         time_stamp=chunk["start_time"]
                     )
+                    print(time_stamp_data)
                     time_stamp_instances.append(time_stamp_data)
 
                 time_stamps = TimeStamp.objects.bulk_create(time_stamp_instances)
-
+                print("created")
                 self.status = "trained"
         except Exception as e:
             print(str(e))
             self.status = "failed"
+            raise e
                 
         
-    def query_vector_db(self, user_prompt, results_limit=5) -> list:
+    def query_vector_db(self, chat, user_prompt, results_limit=5) -> list:
         try:
-
             keywords_to_query = remove_stopwords(user_prompt)
+            prompt_embedding = get_embeddings(text=keywords_to_query)
+            print("stopwords done")
+            all_timestamps = []
 
-            self.chunks_collection = self.client.collections.get(self.collection_name)
-            response = self.chunks_collection.query.hybrid(
-                query=keywords_to_query,
-                fusion_type=HybridFusion.RELATIVE_SCORE,
-                limit=results_limit,
-                query_properties=["chunk^2"],
-                return_metadata=MetadataQuery(distance=True),
-                filters=Filter.by_property("user_id").equal("user_id") # TODO: replace with actual user_id for multi user support
-            )
+            videos_objects = Video.objects.filter(chat=chat)
+            video_objects_ids = [str(video.id) for video in videos_objects]
 
-            for object in response.objects:
-                print(f"\n===== Object index: [{object.properties['chunk_index']}] =====")
-                print(f'_________________________ {object.properties}')
-                print(object.properties["chunk"])
+            # for video in videos_objects:
+            #     all_timestamps.append(TimeStamp.objects.filter(video=video))
 
-            videos = {}
+            all_timestamps = TimeStamp.objects.filter(video_id__in=video_objects_ids)
+            response = all_timestamps.annotate(
+                distance=CosineDistance('embedding', prompt_embedding)
+            ).order_by('distance')[:3]
 
-            for object in response.objects:
-                properties = object.properties
-                video_id = properties["video_id"]
-                video_title = properties["video_title"]
-                chunk = properties["chunk"]
-                # print(video_title)
+            if len(response) > results_limit:
+                response = response[:results_limit]
 
-                # json_object = json.loads(chunk)
-                json_object = dict(eval(chunk))
-                print(json_object)
-                start_time = json_object["start_time"]
-                text = json_object["text"]
-                # video_title = chunk["video_title"]
+            results = {}
 
-                print("start time in qv db::==",start_time)
+            for timestamp in response:
+                video_id = timestamp.video.video_id
+                video_title = timestamp.video.video_title
+                text = timestamp.text
+                start_time = timestamp.time_stamp
 
-                if not video_id in videos.keys():
-                    videos[video_id] = []
-                videos[video_id].append(
+
+                print("start time in  tidb::==",start_time)
+
+                if not video_id in results.keys():
+                    results[video_id] = {
+                        "video_id": video_id,
+                        "video_title": video_title,
+                        "time_stamps": []
+                    }
+
+                results[video_id]["time_stamps"].append(
                     {
-                        "time_stamp": start_time,
                         "caption": text,
-                        "video_title": video_title
+                        "time_stamp": start_time
                     }
-                )
-
-            results = []
-
-
-            for id, data in videos.items():
-                print("creating video")
-                
-                video = Video(
-                    video_title=data[0]["video_title"],
-                    conversation_id=self.conversation_id,
-                    video_id=id
-                )
-                video.save()
-                print(f"video_id {video.id}")
-
-                time_stamps = [
-                        {
-                        "time_stamp" : data_object["time_stamp"],
-                        "caption": data_object["caption"],
-                        "video_id": video.id
-                        } for data_object in data
-                    ]
-                time_stamps_objects = [
-                    TimeStamp(
-                        time_stamp=time_stamp["time_stamp"],
-                        caption=time_stamp["caption"],
-                        video_id=time_stamp["video_id"]
-                    ) for time_stamp in time_stamps
-                ]
-                TimeStamp.objects.bulk_create(time_stamps_objects)
-                
-                aggregated_data = {
-                        "video_title": data[0]["video_title"],
-                        "video_id": id,
-                        "time_stamps": time_stamps
-                    }
-
-                results.append(
-                    aggregated_data
                 )
             
-            return results
+            for timestamp in results.values():
+                conversation_object = Conversation(
+                    chat=chat,
+                    prompt=user_prompt,
+                    response=json.dumps(timestamp)
+                )
+                conversation_object.save()
+            
+            return results.values()
         except Exception as e:
             raise e
 
@@ -213,40 +195,36 @@ def train_model(url, playlist, user_id, chat_id):
     # collection_name = create_collection_name(user_id=user_id, chat_id=chat_id)
 
     tidb_instance = TiDBAI(
-        client=settings.WEAVIATE_CLIENT,
-        # url="https://youtube.com/playlist?list=PLS1QulWo1RIaJECMeUT4LFwJ-ghgoSH6n",
         url=url,
         is_playlist=playlist
     )
-    tidb_instance.vectorize_video_data()
+    tidb_instance.vectorize_video_data(chat_id=chat_id)
 
     chat = Chat.objects.filter(user_id=user_id, id=chat_id).first()
     chat.status = tidb_instance.status
     chat.save()
+
+    print("arrived here")
     
 
     end_time = time.time()
-    print(f"total training time: {end_time-start_time} of collection `{tidb_instance.collection_name}`")
+    print(f"total training time: {end_time-start_time} of chat `{chat.chat_title}`")
 
 def query_db(chat, user_id, prompt):
-    collection_name = create_collection_name(chat_id=chat.id, user_id=user_id)
-    conversation = Conversation(
-        chat=chat,
-        prompt=prompt
-    )
-    conversation.save()
+    # collection_name = create_collection_name(chat_id=chat.id, user_id=user_id)
+    # conversation = Conversation(
+    #     chat=chat,
+    #     prompt=prompt
+    # )
+    # conversation.save()
 
     tidb_instance = TiDBAI(
-        client=settings.WEAVIATE_CLIENT,
-        collection_name=collection_name,
-        # url="https://youtube.com/playlist?list=PLS1QulWo1RIaJECMeUT4LFwJ-ghgoSH6n",
         url=chat.url,
         is_playlist=chat.playlist,
-        conversation_id=conversation.id
     )
 
     results_limit = 5 if chat.playlist else 3
 
-    results = tidb_instance.query_vector_db(prompt, results_limit)
+    results = tidb_instance.query_vector_db(chat, prompt, results_limit)
     return results
 

@@ -18,7 +18,6 @@ class ChatSerializer(serializers.Serializer):
         instance.chat_title = validated_data.get('chat_title', instance.chat_title)
         instance.url = validated_data.get('url', instance.url)
         instance.playlist = validated_data.get('playlist', instance.playlist)
-        instance.last_conversation_id = validated_data.get('last_conversation_id', instance.last_conversation_id)
         instance.save()
         return instance
     
