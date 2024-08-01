@@ -165,3 +165,5 @@ yt_companion_api/ca_cert.pem
 ca_cert.pem
 yt_companion_api/mush-financing-api-firebase-service.json
 mush-financing-api-firebase-service.json
+frontend/node_modules
+node_modules
