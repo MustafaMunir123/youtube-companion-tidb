@@ -1,6 +1,7 @@
 # YouTube Companion - Open Source Project 🎥
 
 An open-source YouTube companion bot that lets you query large YouTube playlists and videos in natural language.
+
 ![yt_bot](https://github.com/user-attachments/assets/7e30ee67-ca46-4422-9416-07ee88081229)
 
 
